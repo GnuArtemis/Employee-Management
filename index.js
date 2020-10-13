@@ -2,6 +2,8 @@ const mysql = require("mysql");
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 
+
+
 const connection = mysql.createConnection({
     host: "localhost",
 
@@ -17,12 +19,12 @@ const connection = mysql.createConnection({
 });
 
 //Connects and initializes the program
-connection.connect(function(err) {
+connection.connect(function (err) {
     if (err) throw err;
-
-    console.log("Welcome to the employee management system!");
-    nextTask();
 })
+
+console.log("Welcome to the employee management system!");
+nextTask();
 
 function nextTask() {
     inquirer
@@ -40,7 +42,6 @@ function nextTask() {
                     adding();
                     break;
                 case "View":
-                    console.log("Now viewing...");
                     viewing();
                     break;
                 case "Update":
@@ -53,37 +54,37 @@ function nextTask() {
                     connection.end();
                     break;
             }
-        }).catch(function(err){
+        }).catch(function (err) {
             if (err) throw err;
         })
 }
 
-function backToStart () {
+function backToStart() {
     console.log("This command is currently in beta. Please choose something else for now.");
     nextTask();
 }
 
-function adding () {
+function adding() {
     inquirer
         .prompt(
             {
                 message: "What would you like to add?",
                 type: "list",
                 name: "next",
-                choices: ["Department", "Role", "Employee", "Back"]
+                choices: ["Departments", "Roles", "Employees", "Back"]
             }
         ).then(function (res) {
             switch (res.next) {
-                case "Department":
-                    console.log("Now adding department...");
+                case "Departments":
+                    console.log("Now adding departments...");
                     backToStart();
                     break;
-                case "Role":
-                    console.log("Now adding role...");
+                case "Roles":
+                    console.log("Now adding roles...");
                     backToStart();
                     break;
-                case "Employee":
-                    console.log("Now adding employee...");
+                case "Employees":
+                    console.log("Now adding employees...");
                     backToStart();
                     break;
 
@@ -91,12 +92,12 @@ function adding () {
                     nextTask();
                     break;
             }
-        }).catch(function(err){
+        }).catch(function (err) {
             if (err) throw err;
         })
 }
 
-function viewing () {
+function viewing() {
     inquirer
         .prompt(
             {
@@ -106,41 +107,229 @@ function viewing () {
                 choices: ["Departments", "Roles", "Employees", "Back"]
             }
         ).then(function (res) {
+
             switch (res.next) {
                 case "Departments":
-                    console.log("Now viewing all departments...");
-                    backToStart();
+                    console.log("Now viewing all departments:");
+                    connection.query("SELECT name AS 'Departments' FROM departments", function (err, result) {
+                        console.table(result);
+                        nextTask();
+                    })
+
                     break;
                 case "Roles":
-                    console.log("Now viewing all roles...");
-                    backToStart();
+                    console.log("Now viewing all roles:");
+                    connection.query(`SELECT title AS "Job Title",salary AS "Salary (USD)" FROM roles`, function (err, result) {
+                        console.table(result);
+                        nextTask();
+                    })
+
                     break;
                 case "Employees":
-                    console.log("Now viewing all employees...");
-                    backToStart();
+                    console.log("Now viewing all employees:");
+                    connection.query(`SELECT employees.first_name AS "First Name",employees.last_name AS "Last Name",title AS "Job Title",salary AS "Salary (USD)", departments.name AS "Department",concat(managers.first_name, ' ', managers.last_name) AS "Manager" FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN departments ON roles.department_id = departments.id LEFT JOIN managers ON employees.manager_id = managers.id;`, function (err, result) {
+                        console.table(result);
+                        nextTask();
+                    })
+
                     break;
 
                 default:
                     nextTask();
                     break;
             }
-        }).catch(function(err){
+        }).catch(function (err) {
             if (err) throw err;
         })
 }
 
-function updating () {
+async function updating() {
+
+    const employeeList = await indeterminateList(`concat(first_name, ' ', last_name)`, 'employees');
+    employeeList.push("Back")
     inquirer
         .prompt(
             {
                 message: "Which employee would you like to update?",
-                type: "input",
-                name: "employeeUpdate"
+                type: "list",
+                name: "employeeUpdate",
+                choices: employeeList
             }
         ).then(function (res) {
-            if(res.employeeUpdate) console.log("Now updating your employee...");
-            backToStart();
-        }).catch(function(err){
+
+            if (res.employeeUpdate === "Back") nextTask();
+            else {
+                console.log(`Now updating ${res.employeeUpdate}`);
+                updateHow(res.employeeUpdate);
+            }
+
+        }).catch(function (err) {
             if (err) throw err;
+        });
+
+
+
+}
+
+function updateHow(ans) {
+    inquirer
+        .prompt(
+            {
+                message: "What would you like to update?",
+                type: "list",
+                name: "updateList",
+                choices: ["Role", "Manager", "First Name", "Last Name", "Back"]
+            }
+        ).then(function (res) {
+            switch (res.updateList) {
+                case "Role":
+                    updateRole(ans);
+                    break;
+                case "Manager":
+                    updateManager(ans);
+                    break;
+                case "First Name":
+                    updateName(ans, "first");
+                    break;
+                case "Last Name":
+                    updateName(ans, "last");
+                    break;
+                default:
+                    updating();
+                    break;
+            }
+        }).catch(function (err) {
+            if (err) throw err;
+        });
+}
+
+async function updateRole(ans) {
+    const roleChoices = await indeterminateList('title', 'roles');
+    roleChoices.push("New Role");
+    roleChoices.push("Back");
+    inquirer
+        .prompt(
+            {
+                message: `What is ${ans}'s new role?`,
+                type: "list",
+                name: "updateList",
+                choices: roleChoices
+            }
+        ).then(function (res) {
+
+            if (res.roleChoices === "Back") updateHow();
+            else if (res.roleChoices === "New Role") backToStart();
+            else {
+                connection.query(`SELECT * FROM roles WHERE title=?;`, [res.updateList], function (err, result) {
+                    if (err) console.log(err);
+                    const roleID = result[0].id;
+                    connection.query(`UPDATE employees SET role_id= ?
+                            WHERE concat(first_name, ' ', last_name)= ?;`, [roleID, ans], function (err, completed) {
+                        console.log(completed.affectedRows + " record(s) updated");
+                        nextTask();
+                    })
+
+                })
+            }
+
+        }).catch(function (err) {
+            if (err) throw err;
+        });
+
+}
+
+async function updateManager(ans) {
+    const roleChoices = await indeterminateList(`concat(first_name, ' ', last_name)`, 'managers');
+    roleChoices.push("New Manager")
+    roleChoices.push("Back");
+    inquirer
+        .prompt(
+            {
+                message: `Who is ${ans}'s new manager?`,
+                type: "list",
+                name: "updateList",
+                choices: roleChoices
+            }
+        ).then(function (res) {
+            if (res.roleChoices === "Back") updateHow();
+            else if (res.roleChoices === "New Manager") backToStart();
+            else {
+                connection.query(`SELECT * FROM managers WHERE concat(first_name, ' ', last_name)=?;`, [res.updateList], function (err, result) {
+                    if (err) console.log(err);
+                    const managerID = result[0].id;
+                    connection.query(`UPDATE employees SET manager_id= ?
+                    WHERE concat(first_name, ' ', last_name)= ?;`, [managerID, ans], function (err, completed) {
+                        console.log(completed.affectedRows + " record(s) updated");
+                        nextTask();
+                    })
+                    
+                })
+            }
+
+        }).catch(function (err) {
+            if (err) throw err;
+        });
+}
+
+async function updateName(ans, type) {
+    inquirer
+        .prompt(
+            {
+                message: `What is ${ans}'s new ${type} name?`,
+                type: "input",
+                name: "nameUpdate"
+            }
+        ).then(async function (res) {
+            let cont = true;
+            if (res.nameUpdate === "Back") updateHow();
+            else if (!res.nameUpdate || res.nameUpdate === null) {
+                const invalidCont = await inquirer.prompt(
+                    {
+                        type: "confirm",
+                        message: "This is not a valid name. Continue anyway?",
+                        name: "cont"
+                    }
+                )
+                cont = invalidCont.cont;
+                if (!cont) updateHow();
+            } else if (cont) {
+
+                connection.query(`SELECT * FROM employees WHERE concat(first_name, ' ', last_name)=?;`, [ans], function (err, result) {
+                    if (err) console.log(err);
+                    const id = result[0].id;
+                    
+                    connection.query(`UPDATE employees SET ${type}_name = ?
+                    WHERE id = ?;`, [res.nameUpdate, result[0].id], function (err, completed) {
+                        console.log(completed.affectedRows + " record(s) updated");
+                        nextTask();
+                    })
+                    
+                })
+            }
+
+        }).catch(function (err) {
+            if (err) throw err;
+        });
+
+}
+
+function indeterminateList(listEls, database) {
+    return new Promise((resolve, reject) => {
+        connection.query(`SELECT ${listEls} AS name FROM ${database};`, function (err, res) {
+            if (err) reject(err);
+
+            let choicesArray = [];
+            for (let i = 0; i < res.length; i++) {
+                choicesArray.push(res[i].name);
+            }
+
+            resolve(choicesArray);
         })
+    })
+}
+
+function validateExample() {
+    // validate: function (input) {
+    //     if (input === "") return "Error! put in a real name";
+    // }
 }

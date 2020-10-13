@@ -3,16 +3,11 @@ CREATE DATABASE employment_DB;
 
 USE employment_DB;
 
-CREATE TABLE employees (
+CREATE TABLE departments (
     id INT NOT NULL AUTO_INCREMENT,
-    first_name VARCHAR(30),
-    last_name VARCHAR(30),
-    role_id INT,
-    manager_id INT,
-    
-    PRIMARY KEY(id),
-    FOREIGN KEY(role_id) REFERENCES roles(id)
+    name VARCHAR(30),
 
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE roles (
@@ -25,9 +20,21 @@ CREATE TABLE roles (
     FOREIGN KEY(department_id) REFERENCES department(id)
 );
 
-CREATE TABLE department (
+CREATE TABLE managers (){
     id INT NOT NULL AUTO_INCREMENT,
-    name VARCHAR(30),
+    employee_id INT,
+    first_name VARCHAR(30),
+    last_name VARCHAR(30)
+}
 
-    PRIMARY KEY (id)
+CREATE TABLE employees (
+    id INT NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(30),
+    last_name VARCHAR(30),
+    role_id INT,
+    manager_id INT,
+    
+    PRIMARY KEY(id),
+    FOREIGN KEY(role_id) REFERENCES roles(id)
+
 );
