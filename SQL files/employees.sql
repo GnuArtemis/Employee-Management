@@ -20,14 +20,7 @@ CREATE TABLE roles (
     FOREIGN KEY(department_id) REFERENCES departments(id)
 );
 
-CREATE TABLE managers (
-    id INT NOT NULL AUTO_INCREMENT,
-    first_name VARCHAR(30),
-    last_name VARCHAR(30),
-    employee_id INT,
-    
-    PRIMARY KEY (id)
-);
+
 
 CREATE TABLE employees (
     id INT NOT NULL AUTO_INCREMENT,
@@ -39,4 +32,14 @@ CREATE TABLE employees (
     PRIMARY KEY(id),
     FOREIGN KEY(role_id) REFERENCES roles(id)
 
+);
+
+CREATE TABLE managers (
+    id INT NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(30),
+    last_name VARCHAR(30),
+    employee_id INT,
+    
+    PRIMARY KEY (id),
+    FOREIGN KEY(employee_id) REFERENCES employees(manager_id)
 );
