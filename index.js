@@ -126,12 +126,8 @@ function viewing() {
 
                     break;
                 case "Employees":
-                    console.log("Now viewing all employees:");
-                    connection.query(`SELECT employees.first_name AS "First Name",employees.last_name AS "Last Name",title AS "Job Title",salary AS "Salary (USD)", departments.name AS "Department",concat(managers.first_name, ' ', managers.last_name) AS "Manager" FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN departments ON roles.department_id = departments.id LEFT JOIN managers ON employees.manager_id = managers.id;`, function (err, result) {
-                        console.table(result);
-                        nextTask();
-                    })
 
+                    employeesSort();
                     break;
 
                 default:
@@ -141,6 +137,111 @@ function viewing() {
         }).catch(function (err) {
             if (err) throw err;
         })
+}
+
+function employeesSort() {
+    inquirer
+        .prompt(
+            {
+                type: "list",
+                message: "Would you like to sort by any variables?",
+                name: "viewOptions",
+                choices: ["Department", "Role", "Manager", "All","Back"]
+            }).then(async function (response) {
+                let sortList;
+                switch (response.viewOptions) {
+                    case "All":
+                        console.table(await niceEmployeeDisplay());
+                        nextTask();
+                        break;
+                    case "Department":
+                        sortList = await indeterminateList("name", "departments");
+                        sortList.push("Back");
+                        inquirer.prompt({
+                            type: "list",
+                            message: "Please choose a department by which you want to view employees.",
+                            choices: sortList,
+                            name: "dept"
+                        }).then(async function (response) {
+                                if (response.dept === "Back") employeesSort();
+                                else {
+                                    const display = await niceEmployeeDisplay("departments.name", response.dept);
+                                    if (display.length) console.table(display);
+                                    nextTask();
+                                }
+                            });
+
+                        break;
+
+                    case "Role":
+                        sortList = await indeterminateList("title", "roles");
+                        sortList.push("Back");
+                        inquirer.prompt({
+                            type: "list",
+                            message: "Please choose a role by which you want to view employees.",
+                            choices: sortList,
+                            name: "dept"
+                        }).then(async function (response) {
+                                if (response.dept === "Back") employeesSort();
+                                else {
+                                    const display = await niceEmployeeDisplay("roles.title", response.dept);
+                                    console.table(display);
+                                    nextTask();
+                                }
+                            });
+
+                        break;
+                    case "Manager":
+                        sortList = await indeterminateList(`concat(managers.first_name, ' ', 
+                        managers.last_name)`, "managers");
+                        sortList.push("Back");
+                        inquirer.prompt({
+                            type: "list",
+                            message: "Please choose a manager by which you want to view employees.",
+                            choices: sortList,
+                            name: "dept"
+                        }).then(async function (response) {
+                            if (response.dept === "Back") employeesSort();
+                            else {
+                                const display = await niceEmployeeDisplay("concat(managers.first_name, ' ', managers.last_name)", response.dept);
+                                console.table(display);
+                                nextTask();
+                            }
+                        });
+
+                        break;
+                    default:
+                        viewing();;
+                        break;
+                }
+            })
+}
+
+async function niceEmployeeDisplay(database, selector) {
+    return new Promise((resolve, reject) => {
+        let query = `SELECT employees.first_name AS "First Name",employees.last_name   AS "Last Name",title AS "Job Title",salary AS "Salary (USD)", departments.name AS "Department",concat(managers.first_name, ' ', managers.last_name) AS "Manager" FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN departments ON roles.department_id = departments.id LEFT JOIN managers ON employees.manager_id = managers.id`;
+        if (selector && database) {
+
+            query += ` WHERE ${database} = "${selector}";`
+            // query += ` WHERE ? = ? `
+            // console.log(query);
+            // connection.query(query, [database, selector], function (err, res) {
+            connection.query(query, [database, selector], function (err, res) {
+
+                if (err) reject(err);
+                if (res.length === 0) resolve("No results under these search parameters.");
+                // console.log(res);
+                resolve(res);
+            })
+        } else {
+            connection.query(query, function (err, res) {
+                if (err) reject(err);
+                if (res.length === 0) resolve("No results under these search parameters.");
+
+                resolve(res);
+            })
+        }
+    })
 }
 
 async function updating() {
@@ -262,7 +363,7 @@ async function updateManager(ans) {
                         console.log(completed.affectedRows + " record(s) updated");
                         nextTask();
                     })
-                    
+
                 })
             }
 
@@ -297,13 +398,13 @@ async function updateName(ans, type) {
                 connection.query(`SELECT * FROM employees WHERE concat(first_name, ' ', last_name)=?;`, [ans], function (err, result) {
                     if (err) console.log(err);
                     const id = result[0].id;
-                    
+
                     connection.query(`UPDATE employees SET ${type}_name = ?
                     WHERE id = ?;`, [res.nameUpdate, result[0].id], function (err, completed) {
                         console.log(completed.affectedRows + " record(s) updated");
                         nextTask();
                     })
-                    
+
                 })
             }
 
@@ -317,6 +418,9 @@ function indeterminateList(listEls, database) {
     return new Promise((resolve, reject) => {
         connection.query(`SELECT ${listEls} AS name FROM ${database};`, function (err, res) {
             if (err) reject(err);
+
+            // console.log(`SELECT ${listEls} AS name FROM ${database};`)
+            // console.log(res);
 
             let choicesArray = [];
             for (let i = 0; i < res.length; i++) {
