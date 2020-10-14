@@ -58,11 +58,6 @@ function nextTask() {
         })
 }
 
-function backToStart() {
-    console.log("This command is currently in beta. Please choose something else for now.");
-    nextTask();
-}
-
 function adding() {
     inquirer
         .prompt(
@@ -486,7 +481,6 @@ async function updateRole(ans, ansid) {
 function promoteManager(ans, ansId, fromUpdate) {
     connection.query(`SELECT * FROM employees WHERE id = ?`, [ansId], function (err, completed) {
         if (err) console.log(err);
-        console.log(completed);
         connection.query(`INSERT INTO managers(first_name, last_name, employee_id) VALUES (?,?,?)`, [completed[0].first_name, completed[0].last_name, ansId], function (err, comp) {
             if (err) console.log(err);
             console.log(comp.affectedRows + " record(s) updated");
