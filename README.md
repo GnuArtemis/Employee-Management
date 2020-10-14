@@ -12,7 +12,7 @@ Through a command-line interface, users can create an employee database with dep
 
 ## Visuals 
 
-![image](placeholder)
+![image](https://user-images.githubusercontent.com/69055538/96023378-3283f200-0e07-11eb-8c61-4519f4caf2a9.png)
 
 The command line interface, as seen with a functional program
 
