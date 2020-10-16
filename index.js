@@ -25,6 +25,7 @@ connection.connect(function (err) {
 console.log("Welcome to the employee management system!");
 nextTask();
 
+//This program has a branching tree structure, where the completion of any route loops back to this starting function. This function in particular lets the user choose their next task: adding elements, viewing elements, updating elements, or ending the program.
 function nextTask() {
     inquirer
         .prompt(
@@ -58,6 +59,8 @@ function nextTask() {
         })
 }
 
+
+//Branch that allows users to create elements
 function adding() {
     inquirer
         .prompt(
@@ -91,6 +94,7 @@ function adding() {
         })
 }
 
+//Creates a new department from user input.  Parameters allow the user to create a new department from creating or updating a new role 
 function departmentAdd(fromRole, fromUpdate) {
     inquirer
         .prompt(
@@ -103,6 +107,7 @@ function departmentAdd(fromRole, fromUpdate) {
             if (!res.deptName) {
                 console.log("Your inputs were not valid. Please try again.")
                 if (fromUpdate) console.log("Aborting employee update. Please continue creating a new department.");
+                if (fromRole) console.log("Aborting role creation. Please continue creating a new department.");
                 adding();
             } else {
                 connection.query(`INSERT INTO departments(name) VALUES (?)`, [res.deptName], function (err, completed) {
@@ -115,6 +120,7 @@ function departmentAdd(fromRole, fromUpdate) {
         })
 }
 
+//Creates a new role. Since roles must be associated with departments, the user has the choice between any existing department or creating a new department. If the latter is chosen, upon creating a new department, the user is returned to this function. 
 async function roleAdd(fromUpdate) {
     const deptChoices = await indeterminateList("name", "departments");
     deptChoices[0].push("New Department")
@@ -161,6 +167,7 @@ async function roleAdd(fromUpdate) {
         })
 }
 
+//Creates a new employee. Since employees must be associated with roles, the user has the choice between any existing role or creating a new role. If the latter is chosen, upon creating a new role, the user is returned to this function. 
 async function employeeAdd() {
     const roleChoices = await indeterminateList("title", "roles");
     roleChoices[0].push("New Role")
@@ -218,6 +225,7 @@ async function employeeAdd() {
         })
 }
 
+//Allows the user to choose which aspect of their company they would like to view: departments, Roles, or Employees
 function viewing() {
     inquirer
         .prompt(
@@ -262,6 +270,7 @@ function viewing() {
         })
 }
 
+//In the case that employees are chosen to view, the user can view them by a particular department, role, manager, or no sorting.
 function employeesSort() {
     inquirer
         .prompt(
@@ -340,6 +349,7 @@ function employeesSort() {
             })
 }
 
+//Employees are viewed with all human-relevant information: First name, last name, Job title, salary, department name, and manager name, from a table composed of all sql tables joined on keys. Columns are renamed to be more nicely formatted.  Query is returned as a promise. 
 async function niceEmployeeDisplay(database, selector) {
     return new Promise((resolve, reject) => {
         let query = `SELECT employees.first_name AS "First Name",employees.last_name   AS "Last Name",title AS "Job Title",salary AS "Salary (USD)", departments.name AS "Department",concat(managers.first_name, ' ', managers.last_name) AS "Manager" FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN departments ON roles.department_id = departments.id LEFT JOIN managers ON employees.manager_id = managers.id`;
@@ -367,6 +377,7 @@ async function niceEmployeeDisplay(database, selector) {
     })
 }
 
+//Branch that controls updating existing employees
 async function updating() {
 
     const employeeList = await indeterminateList(`concat(first_name, ' ', last_name)`, 'employees');
@@ -397,6 +408,7 @@ async function updating() {
 
 }
 
+//Branch that determines which aspect of an employee should be updated
 function updateHow(ans, id) {
     inquirer
         .prompt(
@@ -445,6 +457,7 @@ function updateHow(ans, id) {
         });
 }
 
+//In the case of updating a role, the user can update to any existing role or create a new role (and immediately return to updating the employee after the role has been created)
 async function updateRole(ans, ansid) {
     const roleChoices = await indeterminateList('title', 'roles');
     roleChoices[0].push("New Role");
@@ -478,6 +491,7 @@ async function updateRole(ans, ansid) {
 
 }
 
+//Takes an existing employee and enables them to be chosen as a manager, adding a unique manager id
 function promoteManager(ans, ansId, fromUpdate) {
     connection.query(`SELECT * FROM employees WHERE id = ?`, [ansId], function (err, completed) {
         if (err) console.log(err);
@@ -492,6 +506,7 @@ function promoteManager(ans, ansId, fromUpdate) {
 
 }
 
+//Takes an existing employee and changes their chosen manager to one from a list of all existing managers. Users have the choice to promote a non-manager to a manager (in this case, this function continues after the new manager has been promoted)
 async function updateManager(ans, ansid) {
     const roleChoices = await indeterminateList(`concat(managers.first_name, ' ', 
     managers.last_name)`, "managers");
@@ -546,6 +561,7 @@ async function updateManager(ans, ansid) {
         });
 }
 
+//Updates the selected name according to user input.
 async function updateName(ans, type, ansid) {
     inquirer
         .prompt(
@@ -584,6 +600,7 @@ async function updateName(ans, type, ansid) {
 
 }
 
+//Creates two arrays, one with a list of all element names in the array, the other with associated ids. The intended purpose of this is to allow the user to choose which element they would like to add or update from a dropdown list rather than a typed input, and with associated ids allowing to avoid additional queries for the sake of matching user input.
 function indeterminateList(listEls, database, clarification) {
     return new Promise((resolve, reject) => {
         if(!clarification) clarification = "";
@@ -610,6 +627,8 @@ function indeterminateList(listEls, database, clarification) {
     })
 }
 
+
+//An example of using 'validate' in an inquirer question object
 function validateExample() {
     // validate: function (input) {
     //     if (input === "") return "Error! put in a real name";
